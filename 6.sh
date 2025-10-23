@@ -1,22 +1,24 @@
 #!/bin/bash
+echo "=== Samsung J530FM Emergency Recovery ==="
 
-# Сброс USB питания для всех устройств Samsung
-for device in /sys/bus/usb/devices/*/power/control; do
-    echo "auto" | sudo tee "$device" > /dev/null
+# 1. Сброс USB
+for dev in /sys/bus/usb/devices/*/power/control; do
+    echo "auto" | sudo tee $dev > /dev/null
 done
 
-# Попытка перезагрузки через heimdall
-sudo heimdall detect > /dev/null 2>&1
+# 2. Поиск устройства
+echo "Searching for device..."
+lsusb | grep -i samsung || lsusb | grep -i exynos
+
+# 3. Попытка heimdall с принудительным режимом
+sudo heimdall detect --verbose
 if [ $? -eq 0 ]; then
-    echo "Device detected, attempting reboot to download mode..."
-    sudo heimdall reboot --download
-    sleep 5
+    echo "Attempting flash in current mode..."
+    sudo heimdall flash --BOOT boot.img --no-reboot
+else
+    echo "Device not detected in heimdall"
+    echo "Try physical button combination:"
+    echo "1. Disconnect USB"
+    echo "2. Hold Vol-Down + Home + Power for 15sec"
+    echo "3. Connect USB while holding Vol-Down + Home"
 fi
-
-# Дополнительная попытка через USB reset
-sudo usb_reset || echo "USB reset not available"
-
-echo "If device is still unresponsive, try physical key combination:"
-echo "1. Hold Vol-Down + Home + Power for 10 seconds"
-echo "2. Release all buttons"
-echo "3. Immediately hold Vol-Down + Home and connect USB cable"
